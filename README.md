@@ -6,3 +6,4 @@ It currently supports searching for secrets and showing or copy them to clipboar
 
 Requires an existing password store.
 
+![](example.gif)
