@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/sha256"
 	"flag"
 	"fmt"
@@ -12,7 +13,7 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
-	"github.com/justwatchcom/gopass/password"
+	"github.com/justwatchcom/gopass/store/sub"
 	"github.com/marcusolsson/tui-go"
 )
 
@@ -35,11 +36,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	store, err := password.NewRootStore(os.Getenv("HOME") + "/.password-store")
-	if err != nil {
-		panic(err)
-	}
-	secrets, err := store.List()
+	store := sub.New("root", os.Getenv("HOME")+"/.password-store")
+	secrets, err := store.List("")
 	if err != nil {
 		panic(err)
 	}
@@ -55,7 +53,7 @@ func main() {
 	search.SetFocused(true)
 	search.OnChanged(func(entry *tui.Entry) {
 		foundItems := make([]string, 0)
-		allItems, err := store.List()
+		allItems, err := store.List("")
 		if err != nil {
 			status.SetText(err.Error())
 		}
@@ -96,32 +94,32 @@ func main() {
 	)
 
 	ui := tui.New(root)
-	ui.SetKeybinding(tui.KeyEsc, func() { ui.Quit() })
+	ui.SetKeybinding("Esc", func() { ui.Quit() })
 
 	// Show password
-	ui.SetKeybinding(tui.KeyArrowRight, func() {
-		secret, err := store.Get(storeList.SelectedItem())
+	ui.SetKeybinding("Right", func() {
+		secret, err := store.Get(context.Background(), storeList.SelectedItem())
 		if err != nil {
 			status.SetText(err.Error())
 			return
 		}
 		ui.Quit()
-		fmt.Printf("Password for %v: %v\n", storeList.SelectedItem(), string(secret))
+		fmt.Printf("Password for %v: %v\n", storeList.SelectedItem(), secret.String())
 	})
 
 	// Copy to clipboard
 	storeList.OnItemActivated(func(list *tui.List) {
-		secret, err := store.Get(list.SelectedItem())
+		secret, err := store.Get(context.Background(), list.SelectedItem())
 		if err != nil {
 			status.SetText(err.Error())
 			return
 		}
 
-		if err := clipboard.WriteAll(string(secret)); err != nil {
+		if err := clipboard.WriteAll(secret.String()); err != nil {
 			panic(err)
 		}
 
-		err = delayedClearClipboard(secret, *clipboardTimeout)
+		err = delayedClearClipboard(secret.String(), *clipboardTimeout)
 		if err != nil {
 			panic(err)
 		}
@@ -137,8 +135,8 @@ func main() {
 	}
 }
 
-func delayedClearClipboard(content []byte, timeout int) error {
-	hash := fmt.Sprintf("%x", sha256.Sum256(content))
+func delayedClearClipboard(content string, timeout int) error {
+	hash := fmt.Sprintf("%x", sha256.Sum256([]byte(content)))
 
 	cmd := exec.Command(os.Args[0], "-u", strconv.Itoa(timeout))
 	// https://groups.google.com/d/msg/golang-nuts/shST-SDqIp4/za4oxEiVtI0J
