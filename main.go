@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/atotto/clipboard"
+	"github.com/justwatchcom/gopass/backend/gpg/cli"
 	"github.com/justwatchcom/gopass/store/sub"
 	"github.com/marcusolsson/tui-go"
 )
@@ -36,7 +37,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	store := sub.New("root", os.Getenv("HOME")+"/.password-store")
+	gpg, err := cli.New(context.Background(), cli.Config{})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v", gpg)
+	store := sub.New("root", os.Getenv("HOME")+"/.password-store", gpg)
 	secrets, err := store.List("")
 	if err != nil {
 		panic(err)
