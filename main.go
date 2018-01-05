@@ -41,7 +41,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("%+v", gpg)
 	store := sub.New("root", os.Getenv("HOME")+"/.password-store", gpg)
 	secrets, err := store.List("")
 	if err != nil {
